@@ -11,70 +11,43 @@ namespace OS_3._1.ParallelThreads
     class Reader
     {
         /// <summary>
-        /// Очередь из сообщений
-        /// </summary>
-        Queue<string> messages;
-        /// <summary>
-        /// Куда выводим состояние потока
+        /// Текстбокс для вывода сообщений
         /// </summary>
         TextBox output;
-        TextBox buffOutput;
         /// <summary>
         /// Количество сообщений, которые читает читатель
         /// </summary>
         const int messageCount= 5;
+        /// <summary>
+        /// Буфер, из которого считываем
+        /// </summary>
+        MyBuffer buff;
         int num;
 
-        public Reader(Queue<string> messages, TextBox output, TextBox buffOutput, int num)
+        public Reader(TextBox Output,  MyBuffer buff, int num)
         {
-            this.messages = messages;
-            this.output = output;
+            output = Output;
+            this.buff = buff;
             this.num = num;
-            this.buffOutput = buffOutput;
         }
         /// <summary>
         /// Жизненный цикл читателя
         /// </summary>
         public void Read()
         {
-            lock (output)
-            { output.Invoke(new Action(() => output.Text += "Создан читатель " + num.ToString() + Environment.NewLine)); }
-            int i = 0;
-            while(i<messageCount)
+            int messagesRead = 0;
+            output.Invoke(new Action(() => output.Text += "Читатель " + num.ToString() + " начал работу"  + Environment.NewLine));
+            while (messagesRead < messageCount)
             {
-                lock(output)
-                {
-                    if (messages.Count == 0)
-                        output.Invoke(new Action(() => output.Text += "Читатель " + num.ToString() + " попытался забрать сообщение, буфер был пуст" + Environment.NewLine));
-                    else
-                    {
-                        string tmp = messages.Dequeue();
-                        output.Invoke(new Action(()=> output.Text += "Читатель " + num.ToString() + " забрал сообщение"+tmp + Environment.NewLine));
-                        lock(buffOutput)
-                        {
-                            buffOutput.Invoke(new Action(RemoveFirstLine));
-                        }
-                        ++i;
-                        Thread.Sleep(200);
-                    }
-                }
+                messagesRead++;
+                string message = "";
+                if (buff.Read(out message))
+                    output.Invoke(new Action(() => output.Text += "Читатель " + num.ToString() + " забрал сообщение" + message + Environment.NewLine));
+                else
+                    output.Invoke(new Action(() => output.Text += "Читатель " + num.ToString() + " попытался забрать сообщение, буфер был пуст" + Environment.NewLine));
                 Thread.Sleep(new Random().Next(500, 1500));
             }
-
-            lock (output)
-            { output.Invoke(new Action(() => output.Text += "Читатель " + num.ToString() + " прекратил работу" + Environment.NewLine)); }
+            output.Invoke(new Action(() => output.Text += "Читатель " + num.ToString() + " завершил работу"  + Environment.NewLine));
         }
-
-        void RemoveFirstLine()
-        {
-            if (buffOutput.Lines.Length>0)
-            {
-                List<string> list = buffOutput.Lines.ToList();
-                list.RemoveAt(0);
-                buffOutput.Lines = list.ToArray();
-            }
-        }
-
-
     }
 }

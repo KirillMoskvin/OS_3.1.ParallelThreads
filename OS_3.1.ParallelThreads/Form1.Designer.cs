@@ -151,6 +151,8 @@
             this.Controls.Add(this.tb_messages);
             this.Name = "ReadersWriters";
             this.Text = "Задача 1. 2.1.4";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.ReadersWriters_FormClosing);
+            this.Load += new System.EventHandler(this.ReadersWriters_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

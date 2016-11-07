@@ -11,54 +11,46 @@ namespace OS_3._1.ParallelThreads
     class Writer
     {
         /// <summary>
-        /// Очередь из сообщений
+        /// Буфер
         /// </summary>
-        Queue<string> messages;
+        MyBuffer buff;
+
         /// <summary>
         /// Куда выводим состояние потока
         /// </summary>
         TextBox output;
 
-        TextBox bufferOutput;
         /// <summary>
         /// Количество сообщений, которые пишет читатель
         /// </summary>
         const int messageCount = 5;
         int num;
 
-        public Writer(Queue<string> messages, TextBox output, TextBox bufferOutput, int num)
+        public Writer(TextBox output, MyBuffer buff, int num)
         {
-            this.messages = messages;
             this.output = output;
-            this.bufferOutput = bufferOutput;
+            this.buff = buff;
             this.num = num;
         }
 
+        /// <summary>
+        /// Жизненный цикл писателя
+        /// </summary>
         public void Write()
         {
-            lock(output)
-            { output.Invoke(new Action(() => output.Text += "Создан писатель " + num.ToString() + Environment.NewLine)); }
-            int i = 0;
-            while (i<messageCount)
+            int messagesWrite = 0;
+            output.Invoke(new Action(() => output.Text += "Писатель " + num.ToString() + " начал работу"  + Environment.NewLine));
+            while (messagesWrite < messageCount)
             {
-                lock(output)
-                {
-                    if(messages.Count>=MyBuffer.maxCapacity)
-                        output.Invoke(new Action(() => output.Text += "Писатель " + num.ToString() + " попытался положить число в заполненный буфер" + Environment.NewLine));
-                    string msgToWrite = "П" + num.ToString() + " :" + (new Random().Next(1000)).ToString();
-                    messages.Enqueue(msgToWrite);
-                    lock(bufferOutput)
-                    {
-                        bufferOutput.Invoke(new Action(() => bufferOutput.Text += msgToWrite+Environment.NewLine));
-                    }
-                    output.Invoke(new Action(() => output.Text += "Писатель " + num.ToString() + " положил сообщение: "+msgToWrite + Environment.NewLine));
-                    ++i;
-                    Thread.Sleep(200);
-                }
+                messagesWrite++;
+                string message = "П"+num.ToString()+" :" + new Random().Next(1000).ToString();
+                if (buff.Write(message))
+                    output.Invoke(new Action(() => output.Text += "Писатель " + num.ToString() + " положил сообщение" + message + Environment.NewLine));
+                else
+                    output.Invoke(new Action(() => output.Text += "Писатель " + num.ToString() + " попытался положить сообщение в заполненный" + Environment.NewLine));
                 Thread.Sleep(new Random().Next(500, 1500));
             }
-            lock (output)
-            { output.Invoke(new Action(() => output.Text += "Писатель " + num.ToString() +" прекратил работу"+ Environment.NewLine)); }
+            output.Invoke(new Action(() => output.Text += "Писатель " + num.ToString() + " завершил работу"  + Environment.NewLine));
         }
     }
 }

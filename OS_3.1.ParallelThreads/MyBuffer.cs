@@ -19,30 +19,6 @@ namespace OS_3._1.ParallelThreads
         /// </summary>
         Queue<string> messages;
         /// <summary>
-        /// Объект потока-писателя
-        /// </summary>
-        Writer writer;
-        /// <summary>
-        /// Объект потока-читателя
-        /// </summary>
-        Reader reader;
-        /// <summary>
-        /// Поток-писатель
-        /// </summary>
-        Thread writerThread = null;
-        /// <summary>
-        /// Поток-читатель
-        /// </summary>
-        Thread readerThread = null;
-        /// <summary>
-        /// Количество читателей
-        /// </summary>
-        int numReaders = 0;
-        /// <summary>
-        /// Количество писателей
-        /// </summary>
-        int  numWriters = 0;
-        /// <summary>
         /// Текстбокс для очереди
         /// </summary>
         private TextBox outBuffer;
@@ -63,56 +39,65 @@ namespace OS_3._1.ParallelThreads
             messages = new Queue<string>();
         }
 
-        public void Run()
+        /// <summary>
+        /// Чтение сообщения
+        /// </summary>
+        /// <param name="str">Сообщение</param>
+        /// <returns>true, если чтение удалось</returns>
+        public bool Read(out string str)
         {
-            Random rnd = new Random();
-            while(true)
+            if (messages.Count == 0)
             {
-                if(rnd.Next(2)==0)
+                str = "";
+                return false;
+            }
+            else
+                lock (this)
                 {
-                    writer = new Writer(messages, writeBuffer, outBuffer, numReaders);
-                    numWriters++;
-                    if ((writerThread==null)|| (writerThread.ThreadState!=ThreadState.Running)&&(writerThread.ThreadState != ThreadState.WaitSleepJoin))
-                    {
-                        writerThread = new Thread(writer.Write);
-                        writerThread.Start();
-                    }
+                    outBuffer.Invoke(new Action(RemoveFirstLine));
+                    str = messages.Dequeue();
                 }
-                else
-                {
-                    reader = new Reader(messages, readBuffer, outBuffer, numWriters);
-                    numReaders++;
-                    if ((readerThread == null) || (readerThread.ThreadState != ThreadState.Running) && (readerThread.ThreadState != ThreadState.WaitSleepJoin))
-                    {
-                        readerThread = new Thread(reader.Read);
-                        readerThread.Start();
-                    }
-                }
-                Thread.Sleep(rnd.Next(1500, 3000));
+            return true;
+        }
+        /// <summary>
+        /// Записывает сообщение
+        /// </summary>
+        /// <param name="str">Сообщение</param>
+        /// <returns>true, если очередь не переполнена и запись удалась</returns>
+        public bool Write(string str)
+        {
+            if (messages.Count >= maxCapacity)
+                return false;
+            lock(this)
+            {
+                outBuffer.Invoke(new Action(() => outBuffer.Text += str + "\r\n"));
+                messages.Enqueue(str);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Метод удаляет первую строчку из текстбокса сообщений
+        /// </summary>
+        void RemoveFirstLine()
+        {
+            if (outBuffer.Lines.Length > 0)
+            {
+                List<string> list = outBuffer.Lines.ToList();
+                list.RemoveAt(0);
+                outBuffer.Lines = list.ToArray();
             }
         }
-
-        public void Pause()
+        /// <summary>
+        /// Очистка буфера
+        /// </summary>
+        public void Clear()
         {
-            if ((writerThread.ThreadState == ThreadState.Running) || (writerThread.ThreadState == ThreadState.WaitSleepJoin))
-                writerThread.Suspend();
-            if ((readerThread.ThreadState == ThreadState.Running) || (readerThread.ThreadState == ThreadState.WaitSleepJoin))
-                readerThread.Suspend();
-        }
-
-        public void Stop()
-        {
-            readerThread.Abort();
-            writerThread.Abort();
             messages.Clear();
         }
 
-        public void Resume()
-        {
-            if (writerThread.ThreadState == ThreadState.Suspended)
-                writerThread.Resume();
-            if (readerThread.ThreadState == ThreadState.Suspended)
-                readerThread.Resume();
-        }
+        
+
+        
     }
 }
